@@ -1,0 +1,69 @@
+name: CI on Main
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  # 1) Detect which top-level directory was added in this push
+  detect:
+    name: Detect Added Project
+    runs-on: ubuntu-latest
+    outputs:
+      project-dir: ${{ steps.diff.outputs.directory }}
+    steps:
+      - name: Checkout full history
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Find changed project directory
+        id: diff
+        run: |
+          files=$(git diff --name-only ${{ github.event.before }} ${{ github.sha }})
+          echo "Changed files:"
+          echo "$files"
+
+          dir=$(echo "$files" \
+            | grep '/' \
+            | head -n1 \
+            | cut -d/ -f1)
+
+          if [ -z "$dir" ]; then
+            echo "No top-level directory detected; maybe only root files changed."
+          else
+            echo "Detected directory: $dir"
+          fi
+
+          echo "directory=$dir" >> $GITHUB_OUTPUT
+
+      - name: Logging detected dir
+        run: echo "→ project-dir = '${{ steps.diff.outputs.directory }}'"
+
+  build:
+    name: Build & Test Project
+    needs: detect
+    if: needs.detect.outputs.project-dir != ''
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup Docker # Setup Docker
+        uses: docker/setup-buildx-action@v2
+        
+      - name: Login to Docker Hub # Login to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Build and push Docker image # Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: ${{needs.detect.outputs.project-dir}}
+          push: true
+          tags: ${{ secrets.DOCKER_USERNAME }}/${{needs.detect.outputs.project-dir}}:latest
+          cache-from: type=registry,ref=${{ secrets.DOCKER_USERNAME }}/${{ needs.detect.outputs.project-dir }}:cache
+          cache-to: type=registry,ref=${{ secrets.DOCKER_USERNAME }}/${{ needs.detect.outputs.project-dir }}:cache,mode=max
