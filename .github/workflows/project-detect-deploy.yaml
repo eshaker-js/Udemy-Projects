@@ -1,0 +1,122 @@
+name: CI on Main
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  detect:
+    name: Detect Added Project
+    runs-on: ubuntu-latest
+    outputs:
+      project-dir: ${{ steps.diff.outputs.directory }}
+    steps:
+      - name: Checkout full history
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Find changed project directory
+        id: diff
+        run: |
+          files=$(git diff --name-only ${{ github.event.before }} ${{ github.sha }})
+          echo "Changed files:"
+          echo "$files"
+
+          dir=$(echo "$files" \
+            | grep '/' \
+            | head -n1 \
+            | cut -d/ -f1)
+
+          if [ -z "$dir" ]; then
+            echo "No top-level directory detected; maybe only root files changed."
+          else
+            echo "Detected directory: $dir"
+          fi
+
+          echo "directory=$dir" >> $GITHUB_OUTPUT
+
+      - name: Logging detected dir
+        run: echo "→ project-dir = '${{ steps.diff.outputs.directory }}'"
+
+  build:
+    name: Build & Test Project
+    needs: detect
+    if: needs.detect.outputs.project-dir != ''
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup Docker
+        uses: docker/setup-buildx-action@v2
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: ${{needs.detect.outputs.project-dir}}
+          push: true
+          tags: ${{ secrets.DOCKER_USERNAME }}/${{needs.detect.outputs.project-dir}}:latest
+          cache-from: type=registry,ref=${{ secrets.DOCKER_USERNAME }}/${{ needs.detect.outputs.project-dir }}:cache
+          cache-to: type=registry,ref=${{ secrets.DOCKER_USERNAME }}/${{ needs.detect.outputs.project-dir }}:cache,mode=max
+
+  deploy:
+    name: Deploy Project
+    needs: [build, detect]
+    if: needs.detect.outputs.project-dir != ''
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+    steps:
+      - name: Setup AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ secrets.AWS_REGION }}
+          role-session-name: github-actions
+
+      - name: Deploy to EC2
+        run: |
+          aws ssm send-command \
+          --document-name "AWS-RunShellScript" \
+          --instance-ids ${{ secrets.EC2_INSTANCE_ID }} \
+          --region ${{ secrets.AWS_REGION }} \
+          --comment "Deploying project ${{needs.detect.outputs.project-dir}}" \
+          --parameters 'commands=[
+          "PROJECT='"${{ needs.detect.outputs.project-dir }}"'",
+          "if [ -f /etc/nginx/conf.d/$PROJECT.conf ]; then \
+           PORT=$(grep -hoP \"127\\.0\\.0\\.1:\\K\\d+\" /etc/nginx/conf.d/$PROJECT.conf); \
+          else \
+           # collect all existing ports, find max
+           MAX=$(grep -rhoP \"127\\.0\\.0\\.1:\\K\\d+\" /etc/nginx/conf.d | sort -n | tail -1 || echo 3000); \
+           PORT=$((MAX + 1)); \
+          fi; \
+          echo \"Using port \$PORT for \$PROJECT\"",
+
+          "docker rm -f $PROJECT || true",
+          "docker pull '"${{ secrets.DOCKER_USERNAME }}/$PROJECT:latest"'",
+          "docker run -d --name $PROJECT -p \$PORT:3000 ${{ secrets.DOCKER_USERNAME }}/$PROJECT:latest",
+           "sudo tee /etc/nginx/conf.d/$PROJECT.conf > /dev/null <<EOF
+           server {
+           listen 80;
+           server_name example.com;
+
+           location /$PROJECT/ {
+             proxy_pass http://127.0.0.1:\$PORT/;
+             proxy_set_header Host \$host;
+             proxy_set_header X-Real-IP \$remote_addr;
+           }
+           }
+           EOF",
+
+            # Reload Nginx once for the change
+            "sudo systemctl reload nginx"
+          ]' \
+          --output text
