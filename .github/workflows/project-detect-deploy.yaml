@@ -81,18 +81,19 @@ jobs:
           DOCKER_USER: ${{ secrets.DOCKER_USERNAME }}
         run: |
           cat <<-EOF > deploy-params.json
-          	{
-          		"commands": [
-          			"PROJECT='$PROJECT'",
-          			"if [ -f /etc/nginx/conf.d/\$PROJECT.conf ]; then PORT=\$(grep -Po '(?<=listen )\\\\d+' /etc/nginx/conf.d/\$PROJECT.conf); fi",
-          			"docker rm -f \$PROJECT || true",
-          			"docker pull $DOCKER_USER/\$PROJECT:latest",
-          			"docker run -d --name \$PROJECT -p \$PORT:3000 $DOCKER_USER/\$PROJECT:latest",
-          			"echo 'server { listen 80; server_name example.com; location /$PROJECT/ { proxy_pass http://127.0.0.1:\$PORT/; proxy_set_header Host \$host; proxy_set_header X-Real-IP \$remote_addr; } }' | sudo tee /etc/nginx/conf.d/\$PROJECT.conf",
-          			"sudo systemctl reload nginx"
-          		]
-          	}
+          {
+            "commands": [
+              "PROJECT='$PROJECT'",
+              "docker rm -f \$PROJECT 2>/dev/null || true",
+              "docker pull $DOCKER_USER/\$PROJECT:latest",
+              "docker run -d --name \$PROJECT -p \$PORT:3000 $DOCKER_USER/\$PROJECT:latest",
+              "echo 'server { listen 80; server_name example.com; location /\$PROJECT/ { proxy_pass http://127.0.0.1:\$PORT/; proxy_set_header Host \$host; proxy_set_header X-Real-IP \$remote_addr; } }' | sudo tee /etc/nginx/conf.d/\$PROJECT.conf",
+              "sudo nginx -t",
+              "sudo systemctl reload nginx"
+            ]
+          }
           EOF
+
       - name: Setup AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
