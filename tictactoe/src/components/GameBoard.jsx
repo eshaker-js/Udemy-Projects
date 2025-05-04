@@ -32,3 +32,4 @@ export default function GameBoard({handleSquareClicked, gameBoard}) {
     </ol>
   )
 }
+// Project successfully deployed to EC2
