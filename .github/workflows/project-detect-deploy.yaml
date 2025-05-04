@@ -69,12 +69,14 @@ jobs:
 
   deploy:
     name: Deploy Project
-    needs: [build, detect]
-    if: needs.detect.outputs.project-dir != ''
+    needs: build
     runs-on: ubuntu-latest
     permissions:
       id-token: write
     steps:
+      - name: Checkout to get JSON
+        uses: actions/checkout@v3
+
       - name: Setup AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
