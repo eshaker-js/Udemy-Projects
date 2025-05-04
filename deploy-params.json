@@ -5,7 +5,7 @@
       "docker rm -f $PROJECT || true",
       "docker pull myuser/$PROJECT:latest",
       "docker run -d --name $PROJECT -p $PORT:3000 myuser/$PROJECT:latest",
-      "sudo tee /etc/nginx/conf.d/$PROJECT.conf > /dev/null <<EOF\nserver { … }\nEOF",
+      "sudo tee /etc/nginx/conf.d/$PROJECT.conf > /dev/null <<EOF\nserver {\n    listen 80;\n    server_name example.com;\n\n    location /$PROJECT/ {\n        proxy_pass http://127.0.0.1:$PORT/;\n        proxy_set_header Host $host;\n        proxy_set_header X-Real-IP $remote_addr;\n    }\n}\nEOF",
       "sudo systemctl reload nginx"
     ]
   }
