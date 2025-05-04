@@ -69,13 +69,36 @@ jobs:
 
   deploy:
     name: Deploy Project
-    needs: build
+    needs: [build, detect]
+    if: needs.detect.outputs.project-dir != ''
     runs-on: ubuntu-latest
     permissions:
       id-token: write
     steps:
-      - name: Checkout to get JSON
-        uses: actions/checkout@v3
+      - name: Generate JSON params file
+        # pull the detected project name into an env var to avoid ${{…}} inside scripts
+        env:
+          PROJECT: ${{ needs.detect.outputs.project-dir }}
+          DOCKER_USER: ${{secrets.DOCKER_USERNAME}}
+        run: |
+          echo '{' > deploy-params.json
+          echo '  "commands": [' >> deploy-params.json
+
+          echo '    "PROJECT='\'''"$PROJECT"'\''",' >> deploy-params.json
+
+          echo '    "if [ -f /etc/nginx/conf.d/\$PROJECT.conf ]; then PORT=\$(grep -Po '"'"'(?<=listen )\\d+'"'"/etc/nginx/conf.d/\$PROJECT.conf); fi",' >> deploy-params.json
+
+          echo '    "docker rm -f \$PROJECT || true",' >> deploy-params.json
+          echo '    "docker pull '"$DOCKER_USER"'/\$PROJECT:latest",' >> deploy-params.json
+          echo '    "docker run -d --name \$PROJECT -p \$PORT:3000 '"$DOCKER_USER"'/\$PROJECT:latest",' >> deploy-params.json
+
+          echo '    "echo '\''server { listen 80; server_name example.com; location /'$PROJECT'/ { proxy_pass http://127.0.0.1:\$PORT/; proxy_set_header Host \$host; proxy_set_header X-Real-IP \$remote_addr; } }'\'' | sudo tee /etc/nginx/conf.d/\$PROJECT.conf",' >> deploy-params.json
+
+          echo '    "sudo systemctl reload nginx"' >> deploy-params.json
+
+          echo '  ]' >> deploy-params.json
+          echo '}' >> deploy-params.json
+
 
       - name: Setup AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
