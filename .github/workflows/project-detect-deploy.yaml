@@ -1,6 +1,7 @@
 name: Detect, Build & Deploy Project
 
 on:
+  workflow-dispatch:
   push:
     branches:
       - main
