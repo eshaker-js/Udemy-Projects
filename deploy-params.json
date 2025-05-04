@@ -1,0 +1,12 @@
+{
+    "commands": [
+      "PROJECT='${PROJECT}'",
+      "if [ -f /etc/nginx/conf.d/$PROJECT.conf ]; then PORT=…; fi",
+      "docker rm -f $PROJECT || true",
+      "docker pull myuser/$PROJECT:latest",
+      "docker run -d --name $PROJECT -p $PORT:3000 myuser/$PROJECT:latest",
+      "sudo tee /etc/nginx/conf.d/$PROJECT.conf > /dev/null <<EOF\nserver { … }\nEOF",
+      "sudo systemctl reload nginx"
+    ]
+  }
+  
