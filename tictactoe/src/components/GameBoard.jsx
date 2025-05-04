@@ -11,7 +11,6 @@ export default function GameBoard({handleSquareClicked, gameBoard}) {
       return newGameBoard
     })
     changeActivePlayer()
-    moved state up
   } */
 
 
