@@ -32,4 +32,3 @@ export default function GameBoard({handleSquareClicked, gameBoard}) {
     </ol>
   )
 }
-//GameBoard Successfully Deployed
