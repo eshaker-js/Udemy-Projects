@@ -95,29 +95,34 @@ jobs:
             --parameters commands=["bash ~/deploy/deploy.sh $PROJECT $DOCKER_USER"] \
             --output text
   
-  # register:
-  #   - name: Checkout
-  #     uses: actions/checkout@v3
-    
-  #   - name: Read project data.json
-  #       id: read_data
-  #       run: |
-  #         PROJECT_DIR=${{ needs.detect.outputs.project-dir }}
-  #         DATA_FILE="$PROJECT_DIR/data.json"
-  #         # Load the JSON into a step output called "data"
-  #         echo "data<<EOF" >> $GITHUB_OUTPUT
-  #         cat "$DATA_FILE" >> $GITHUB_OUTPUT
-  #         echo "EOF" >> $GITHUB_OUTPUT
-
-  #   - name: POST to Projects API
-  #     env:
-  #       API_KEY: ${{ secrets.PROJECTS_API_KEY }}
-  #       PAYLOAD: ${{ steps.read_data.outputs.data }}
-  #     run: |
-  #       # stream the JSON payload into curl
-  #       echo "$PAYLOAD" | \
-  #       curl -X POST "" \
-  #         -H "Content-Type: application/json" \
-  #         -H "Authorization: Bearer $API_KEY" \
-  #         --data @- \
-  #         --fail 
+  register:
+    name: Register Project
+    needs: deploy
+    if: needs.detect.outputs.project-dir != ''
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+      
+      - name: Read project data.json
+        id: read_json
+        run: |
+          PROJECT_DIR=${{ needs.detect.outputs.project-dir }}
+          DATA_FILE="$PROJECT_DIR/data.json"
+          # Load the JSON into a step output called "data"
+          echo "data<<EOF" >> $GITHUB_OUTPUT
+          cat "$DATA_FILE" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+      
+      - name: POST to Projects API
+        env:
+          API_KEY: ${{ secrets.PORTFOLIO_POST_REQUEST_KEY }}
+          PAYLOAD: ${{ steps.read_json.outputs.data }}
+        run: |
+          # stream the JSON payload into curl
+          echo "$PAYLOAD" | \
+          curl -X POST "https://www.jansalama.com/api/projects" \
+            -H "Content-Type: application/json" \
+            -H "Authorization: Bearer $API_KEY" \
+            --data @- \
+            --fail 
