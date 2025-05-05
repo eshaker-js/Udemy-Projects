@@ -107,11 +107,10 @@ jobs:
       - name: POST to Projects API
         env:
           API_KEY: ${{ secrets.PORTFOLIO_POST_REQUEST_KEY }}
+          PROJECT_DIR: ${{ needs.detect.outputs.project-dir }}
         run: |
-          PROJECT_DIR=${{ needs.detect.outputs.project-dir }}
-          DATA_FILE="$PROJECT_DIR/data.json"
           curl -X POST "https://www.jansalama.com/api/projects" \
             -H "Content-Type: application/json" \
             -H "Authorization: Bearer $API_KEY" \
-            --data @"$DATA_FILE" \
+            --data @"$PROJECT_DIR/data.json" \
             --fail 
