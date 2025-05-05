@@ -1,0 +1,8 @@
+{
+  "name": "Tic-Tac-Toe",
+  "description": "A Tic-Tac-Toe game built with React and Vite.",
+  "address": "/projects/tictactoe",
+  "githubURL": "https://github.com/eshaker-js/Udemy-Projects/tree/main/tictactoe",
+  "tags": ["React", "Vite", "JavaScript", "HTML"],
+  "difficulty": 1
+}
