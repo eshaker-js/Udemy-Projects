@@ -97,7 +97,7 @@ jobs:
   
   register:
     name: Register Project
-    needs: deploy
+    needs: [detect, deploy]
     if: needs.detect.outputs.project-dir != ''
     runs-on: ubuntu-latest
     steps:
