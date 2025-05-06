@@ -65,8 +65,8 @@ jobs:
           context: ${{needs.detect.outputs.project-dir}}
           push: true
           tags: ${{ secrets.DOCKER_USERNAME }}/${{needs.detect.outputs.project-dir}}:latest
-          cache-from: type=registry,ref=${{ secrets.DOCKER_USERNAME }}/${{ needs.detect.outputs.project-dir }}:cache
-          cache-to: type=registry,ref=${{ secrets.DOCKER_USERNAME }}/${{ needs.detect.outputs.project-dir }}:cache,mode=max
+          #cache-from: type=registry,ref=${{ secrets.DOCKER_USERNAME }}/${{ needs.detect.outputs.project-dir }}:cache
+          #cache-to: type=registry,ref=${{ secrets.DOCKER_USERNAME }}/${{ needs.detect.outputs.project-dir }}:cache,mode=max
 
   deploy:
     name: Deploy Project
