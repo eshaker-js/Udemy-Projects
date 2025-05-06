@@ -1,0 +1,8 @@
+{
+    "name": "Investment Calculator",
+    "description": "An app that calculates compounding interest for investments, built to practice useState.",
+    "address": "/projects/investment-calculator",
+    "githubURL": "https://github.com/eshaker-js/Udemy-Projects/tree/main/tictactoe",
+    "tags": ["React", "Vite", "JavaScript", "HTML"],
+    "difficulty": 1
+  }
