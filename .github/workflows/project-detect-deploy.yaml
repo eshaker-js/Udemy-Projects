@@ -92,7 +92,7 @@ jobs:
             --document-name "AWS-RunShellScript" \
             --instance-ids ${{ secrets.EC2_INSTANCE_ID }} \
             --comment      "Deploying $PROJECT" \
-            --parameters commands=["bash /home/ubuntu/deploy/deploy.sh $PROJECT $DOCKER_USER"]
+            --parameters commands=["bash /home/ubuntu/deploy/deploy.sh $PROJECT $DOCKER_USER"] \
             --output text
 
   register:
